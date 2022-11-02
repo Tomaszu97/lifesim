@@ -9,11 +9,11 @@
 void
 entity_draw(const entity_t *e)
 {
-    gal_draw_pixel(e->p.x, e->p.y, e->c.r, e->c.g, e->c.b, 255);
+    gal_draw_pixel(e->p[0], e->p[1], e->c.r, e->c.g, e->c.b, 255);
     if (e->t == ANIMAL) {
         const animal_t *a = (const animal_t *) e;
-        gal_draw_circle(e->p.x, e->p.y, a->los, e->c.r, e->c.g, e->c.b, 128);
-        gal_draw_circle(e->p.x, e->p.y, a->lor, e->c.r, e->c.g, e->c.b, 128);
+//        gal_draw_circle(e->p[0], e->p[1], a->los, 255, 255, 0, 128);
+        gal_draw_circle(e->p[0], e->p[1], a->lor, 255, 0, 255, 128);
     }
 }
 
@@ -39,47 +39,32 @@ animal_wander(animal_t *a)
 {
     if (a->s != WANDERING) return;
 
-    unsigned int dist = /*rand() % 3 +*/ 1;
-    direction_e dir;
+    vec3 dir;
     if ((rand() % 100) < a->det) {
-        dir = a->dir;
+        glm_vec3_copy(a->dir, dir);
     }
     else {
-        dir = rand_direction();
+        rand_vec_norm(dir);
     }
 
-    switch (dir) {
-        case UP:
-            a->e.p.y -= dist;
-            break;
-        case DOWN:
-            a->e.p.y += dist;
-            break;
-        case LEFT:
-            a->e.p.x -= dist;
-            break;
-        case RIGHT:
-            a->e.p.x += dist;
-            break;
-        case NONE:
-            break;
-    }
+    glm_vec3_scale(dir, a->spd, dir);
+    glm_vec3_add(a->e.p, dir, a->e.p);
 
-    if (a->e.p.x < 0) {
-        a->e.p.x = 0;
-        a->dir = RIGHT;
+    if (a->e.p[0] < 0) {
+        a->e.p[0] = 0;
+        a->dir[0] *= -1;
     }
-    if (a->e.p.x > WINDOW_WIDTH) {
-        a->e.p.x = WINDOW_WIDTH;
-        a->dir = LEFT;
+    if (a->e.p[0] > WINDOW_WIDTH) {
+        a->e.p[0] = WINDOW_WIDTH;
+        a->dir[0] *= -1;
     }
-    if (a->e.p.y < 0) {
-        a->e.p.y = 0;
-        a->dir = DOWN;
+    if (a->e.p[1] < 0) {
+        a->e.p[1] = 0;
+        a->dir[1] *= -1;
     }
-    if (a->e.p.y > WINDOW_HEIGHT) {
-        a->e.p.y = WINDOW_HEIGHT;
-        a->dir = UP;
+    if (a->e.p[1] > WINDOW_HEIGHT) {
+        a->e.p[1] = WINDOW_HEIGHT;
+        a->dir[1] *= -1;
     }
 }
 
@@ -141,8 +126,8 @@ animal_everyloop(animal_t *a)
 
     a->f--;
 
-    if (a->f <= 25) a->hp--;
-    else if (a->f >= 75) a->hp--;
+    if (a->f == 0) a->hp--;
+    else if (a->f >= 99) a->hp--;
 }
 
 void
@@ -153,9 +138,13 @@ animal_look_for_food(animal_t *a)
 
     int i;
     for (i=0; i<g_foods_len; i++) {
-        const food_t *f = &g_foods[i];
-        float dist = hypot(a->e.p.x - f->e.p.x, a->e.p.y - f->e.p.y);
+        food_t *f = &g_foods[i];
+        float dist = hypot(a->e.p[0] - f->e.p[0], a->e.p[1] - f->e.p[1]);
         if (dist < a->los) {
+            glm_vec3_sub(f->e.p, a->e.p, a->dir);
+            glm_vec3_normalize(a->dir);
+        }
+        if (dist < a->lor) {
             a->t = f->cal;
             animal_set_state(a, EATING);
 
@@ -175,7 +164,7 @@ animal_look_for_toilet(animal_t *a)
     for (i=0; i<g_toilets_len; i++) {
 
         toilet_t *t = &g_toilets[i];
-        float dist = hypot(a->e.p.x - t->e.p.x, a->e.p.y - t->e.p.y);
+        float dist = hypot(a->e.p[0] - t->e.p[0], a->e.p[1] - t->e.p[1]);
 
         if (dist < a->los) {
             int diff = t->c - a->f;
@@ -206,15 +195,21 @@ animals_rand_gen(const unsigned int min_x,
         g_animals_len++;
 
         a->e.t      = ANIMAL;
-        a->e.p.x    = (rand() % (max_x - min_x)) + min_x;
-        a->e.p.y    = (rand() % (max_y - min_y)) + min_y;
-        a->hp       = (rand() % 400) + 20;
-        a->det      = (rand() % 40) + 45;
-        a->dir      = rand_direction();
-        a->los      = (rand() % 6) + 2;
+        rand_vec_rng(a->e.p,
+                     0,
+                     WINDOW_WIDTH,
+                     0,
+                     WINDOW_HEIGHT,
+                     0,
+                     0);
+        a->hp       = (rand() % 400) + 200;
+        a->det      = (rand() % 20) + 75;
+        rand_vec_norm(a->dir);
+        a->los      = (rand() % 15) + 40;
         a->lor      = (rand() % 2) + 1;
         a->f        = 0;
         a->p        = (rand() % 3) + 1;
+        a->spd      = ((float)(rand() % 12) / 10) + 0.3;
         animal_set_state(a, WANDERING);
     }
 }
@@ -233,8 +228,8 @@ foods_rand_gen(const unsigned int min_x,
         g_foods_len++;
 
         f->e.t      = FOOD;
-        f->e.p.x    = (rand() % (max_x - min_x)) + min_x;
-        f->e.p.y    = (rand() % (max_y - min_y)) + min_y;
+        f->e.p[0]   = (rand() % (max_x - min_x)) + min_x;
+        f->e.p[1]   = (rand() % (max_y - min_y)) + min_y;
         f->cal      = (rand() % 200) + 10;
         entity_set_color(&f->e, COL_RED);
     }
@@ -254,8 +249,8 @@ toilets_rand_gen(const unsigned int min_x,
         g_toilets_len++;
 
         t->e.t      = TOILET;
-        t->e.p.x    = (rand() % (max_x - min_x)) + min_x;
-        t->e.p.y    = (rand() % (max_y - min_y)) + min_y;
+        t->e.p[0]   = (rand() % (max_x - min_x)) + min_x;
+        t->e.p[1]   = (rand() % (max_y - min_y)) + min_y;
         t->c        = (rand() % 30) + 20;
         entity_set_color(&t->e, COL_BROWN);
     }
@@ -270,13 +265,13 @@ main()
                      WINDOW_WIDTH,
                      0,
                      WINDOW_HEIGHT,
-                     100);
+                     30);
 
     foods_rand_gen(0,
                    WINDOW_WIDTH,
                    0,
                    WINDOW_HEIGHT,
-                   60);
+                   120);
 
     toilets_rand_gen(0,
                      WINDOW_WIDTH,

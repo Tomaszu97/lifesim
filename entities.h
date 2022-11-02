@@ -3,14 +3,8 @@
 
 #include <stdlib.h>
 #include "colors.h"
-
-typedef enum {
-    NONE    = 0,
-    UP      = 1,
-    DOWN    = 2,
-    LEFT    = 3,
-    RIGHT   = 4
-} direction_e;
+#include "cglm/cglm.h"
+#include "cglm/call.h"
 
 typedef enum {
     GENERIC_ENTITY,
@@ -20,11 +14,6 @@ typedef enum {
 } entity_type_t;
 
 typedef struct {
-    int x;
-    int y;
-} position_t;
-
-typedef struct {
     unsigned int r;
     unsigned int g;
     unsigned int b;
@@ -32,7 +21,7 @@ typedef struct {
 
 typedef struct {
     entity_type_t t;
-    position_t p;
+    vec3 p;
     color_t c;
 } entity_t;
 
@@ -48,7 +37,8 @@ typedef enum {
 typedef struct {
     entity_t e;
     int hp;
-    direction_e dir;
+    vec3 dir;
+    float spd;
     int det;          /* determination - percent */
     int los;          /* line of sight */
     int lor;          /* line of reach */
@@ -56,7 +46,7 @@ typedef struct {
     int t;            /* timer counting until end of state */
     int f;            /* fullness (percent) */
     int p;            /* attacking power */
-    //position_t memory[2];
+    //vec3 position_memory[2];
 } animal_t;
 
 typedef struct {
@@ -108,10 +98,38 @@ foreach(void *pl,
     }
 }
 
-direction_e
-rand_direction()
+void
+rand_vec(vec3 vec)
 {
-    return (rand() % 4) + 1;
+    vec[0] = (float) (rand() - (RAND_MAX/2));
+    vec[1] = (float) (rand() - (RAND_MAX/2));
+    vec[2] = (float) (rand() - (RAND_MAX/2));
+}
+
+void
+rand_vec_norm(vec3 vec)
+{
+    rand_vec(vec);
+    glm_vec3_normalize(vec);
+}
+
+void
+rand_vec_rng(vec3 vec,
+             const int min_x,
+             const int max_x,
+             const int min_y,
+             const int max_y,
+             const int min_z,
+             const int max_z)
+{
+    if (max_x-min_x == 0) vec[0] = 0;
+    else vec[0] = (float) ((rand() % (max_x-min_x)) + min_x);
+
+    if (max_y-min_y == 0) vec[1] = 0;
+    else vec[1] = (float) ((rand() % (max_y-min_y)) + min_y);
+
+    if (max_z-min_z == 0) vec[2] = 0;
+    else vec[2] = (float) ((rand() % (max_z-min_z)) + min_z);
 }
 
 void
