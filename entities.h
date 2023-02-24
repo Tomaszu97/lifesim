@@ -36,7 +36,7 @@ typedef enum {
 
 typedef struct {
     entity_t e;
-    int hp;
+    float hp;
     vec3 dir;
     float spd;
     int det;          /* determination - percent */
@@ -186,6 +186,58 @@ animal_remove(animal_t *a)
     memcpy(&g_animals[idx], &g_animals[g_animals_len-1], sizeof(animal_t));
     g_animals_len--;
 
+}
+
+const char *
+animal_state_to_str(const animal_state_t s)
+{
+    switch(s)
+    {
+        case DEAD:
+            return "DEAD";
+        case RESTING:
+             return "RESTING";
+        case WANDERING:
+             return "WANDERING";
+        case EATING:
+             return "EATING";
+        case IN_TOILET:
+             return "IN_TOILET";
+        case TALKING:
+             return "TALKING";
+        default:
+            return "INVALID";
+    }
+}
+
+void
+animal_print(animal_t *a)
+{
+    printf("animal\n"
+           "\te.p %.2f %.2f %.2f\n"
+           "\te.c %d %d %d\n"
+           "\thp %.2f\n"
+           "\tdir %.2f %.2f %.2f\n"
+           "\tspd %.2f\n"
+           "\tdet %d\n"
+           "\tlos %d\n"
+           "\tlor %d\n"
+           "\ts %s\n"
+           "\tt %d\n"
+           "\tf %d\n"
+           "\tp %d\n",
+           a->e.p[0], a->e.p[1], a->e.p[2],
+           a->e.c.r, a->e.c.g, a->e.c.b,
+           a->hp,
+           a->dir[0], a->dir[1], a->dir[2],
+           a->spd,
+           a->det,
+           a->los,
+           a->lor,
+           animal_state_to_str(a->s),
+           a->t,
+           a->f,
+           a->p);
 }
 
 #endif /* ENTITIES_H */

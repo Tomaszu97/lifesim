@@ -12,8 +12,8 @@ entity_draw(const entity_t *e)
     gal_draw_pixel(e->p[0], e->p[1], e->c.r, e->c.g, e->c.b, 255);
     if (e->t == ANIMAL) {
         const animal_t *a = (const animal_t *) e;
-//        gal_draw_circle(e->p[0], e->p[1], a->los, 255, 255, 0, 128);
-        gal_draw_circle(e->p[0], e->p[1], a->lor, 255, 0, 255, 128);
+        gal_draw_circle(e->p[0], e->p[1], a->los, e->c.r, e->c.g, e->c.b, 255);
+        gal_draw_circle(e->p[0], e->p[1], a->lor, e->c.r, e->c.g, e->c.b, 255);
     }
 }
 
@@ -74,7 +74,7 @@ animal_eat(animal_t *a)
     if (a->s != EATING) return;
 
     a->f++;
-    a->hp++;
+    a->hp += 1;
     if (a->f > 100) a->f = 100;
 }
 
@@ -122,12 +122,20 @@ animal_everyloop(animal_t *a)
     /* only for alive animals */
     if (a->s == DEAD) return;
 
+    /* if (g_animals_len > 0)*/
+    if (a == &g_animals[0])
+        animal_print(&g_animals[0]);
+
+    if (a->s != EATING) {
+        a->f--;
+        if (a->f < 0) a->f = 0;
+    }
+
+    if (a->f == 0) a->hp -= 0.7;
+    else if (a->f > 99) a->hp -= 0.4;
+    if (a->hp < 0) a->hp = 0;
+
     if (a->hp <= 0) animal_set_state(a, DEAD);
-
-    a->f--;
-
-    if (a->f == 0) a->hp--;
-    else if (a->f >= 99) a->hp--;
 }
 
 void
@@ -162,11 +170,14 @@ animal_look_for_toilet(animal_t *a)
 
     int i;
     for (i=0; i<g_toilets_len; i++) {
-
         toilet_t *t = &g_toilets[i];
         float dist = hypot(a->e.p[0] - t->e.p[0], a->e.p[1] - t->e.p[1]);
 
         if (dist < a->los) {
+            glm_vec3_sub(t->e.p, a->e.p, a->dir);
+            glm_vec3_normalize(a->dir);
+        }
+        if (dist < a->lor) {
             int diff = t->c - a->f;
             if (diff >= 0) {
                 a->t = a->f;
@@ -203,7 +214,7 @@ animals_rand_gen(const unsigned int min_x,
                      0,
                      0);
         a->hp       = (rand() % 400) + 200;
-        a->det      = (rand() % 20) + 75;
+        a->det      = (rand() % 20) + 55;
         rand_vec_norm(a->dir);
         a->los      = (rand() % 15) + 40;
         a->lor      = (rand() % 2) + 1;
@@ -265,7 +276,7 @@ main()
                      WINDOW_WIDTH,
                      0,
                      WINDOW_HEIGHT,
-                     30);
+                     10);
 
     foods_rand_gen(0,
                    WINDOW_WIDTH,
@@ -325,7 +336,7 @@ main()
         gal_flip_screen();
         gal_handle_events();
 
-        usleep(10000);
+        usleep(1000);
     }
 
     return 0;
